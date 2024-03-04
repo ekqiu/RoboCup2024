@@ -410,9 +410,13 @@ def scan_dist():
 
 def scan_for_depo():
     robot.turn(45)
-    robot.straight(130)
+    robot.straight(110)
     #one wheel turn
-    right.run_angle(100, 150)
+    robot.stop()
+    current = robot.angle()
+    while robot.angle() - current > -90:
+        right.run(500)
+        #object_detection()
     robot.straight(50)
     # check if evac is there
     # use front colour sensor to check if the value is red (dead ball), green (alive ball) or black (nothing)
