@@ -38,14 +38,14 @@ robot = DriveBase(left, right, 33, 187)
 #robot.settings(350, 150, 300, 200)
 
 # Colour Sensors facing bricks.
-front_light_sensor = ColorSensor(Port.S3)
+front_light_sensor = ColorSensor(Port.S1)
 
 # Colour Sensors facing floor.
 left_light_sensor = ColorSensor(Port.S4)
-right_light_sensor = ColorSensor(Port.S2)
+right_light_sensor = ColorSensor(Port.S3)
 
 #ultrasonic
-ultrasonic_sensor = UltrasonicSensor(Port.S1)
+ultrasonic_sensor = UltrasonicSensor(Port.S2)
 
 left_min_red = 5
 left_max_red = 55
@@ -395,30 +395,36 @@ def scan_dist():
             median = dist_list[count // 2]
         robot.straight(-300)
         print(median)
+        ev3.screen.print(median)
 
-    if foralignment < 175:
-        robot.drive(-10, 0)
-        wait(100)
-        robot.stop()
+        if foralignment < 175:
+            robot.drive(-100, 0)
+            wait(1000)
+            robot.stop()
 
-    robot.turn(-90)
-
-    while robot.distance() < median - 300:
-        wall_track()
-    robot.stop()
-
+        robot.turn(-90)
     
+    print(median)
+    wall_track(median - 300)
+    scan_for_depo()
 
+def scan_for_depo():
+    robot.turn(45)
+    robot.straight(130)
+    #one wheel turn
     
-
+    robot.straight(50)
+    # check if evac is there
+    # use front colour sensor to check if the value is red (dead ball), green (alive ball) or black (nothing)
+    value = front_light_sensor.rgb()
 
 def evac_zone():
     robot.straight(200) #move 20cm into evac
 
-def wall_track():
+def wall_track(distance):
     robot.stop()
     robot.reset() #this assums the robot is straight when start, coz it uses this as the initial 0 angle
-    while True:
+    while robot.distance() < distance:
         # check reading for dist to left wall
         left_dist = ultrasonic_sensor.distance() #you either \use a or b, not both
         corrected_left_dist = left_dist * abs(math.cos(robot.angle() * 3.14 / 180))
@@ -426,7 +432,7 @@ def wall_track():
         if corrected_left_dist > 200:
             error = 0
         else:
-            error = corrected_left_dist - 75 #actual value is 75 #error is positive means robot too far, means should face negative angle
+            error = corrected_left_dist - 85 #actual value is 75 #error is positive means robot too far, means should face negative angle
             #if youre just checking logic, you can change the 75, 75 very close to wall, hard to see if working
 
         target_angle = error * -0.23 # this affects the max angle the robot can tilt
@@ -437,6 +443,8 @@ def wall_track():
         #negative angle error should rutn right, so 
 
         robot.drive(50, -angle_error * 12.0) #this affects how fast it turns back
+
+    robot.stop()
         #have to decide on sped first, then tune the multipliers
         #make it drive
     #nvm you print the values and test first
@@ -467,7 +475,7 @@ def wall_track():
 
 # this function you test on its own first #make new one just wall track youll use at many places in evac
 
-scan_dist()
+scan_for_depo()
 while False: #checking object calibrated value
     front_val = front_light_sensor.rgb()
     if (front_val[0] + front_val[1] + front_val[2]) == 0:
