@@ -78,6 +78,7 @@ left_val = None
 right_val = None
 evac = False
 last_black = 0
+stored = []
 
 # Starting beep.
 ev3.speaker.beep()
@@ -283,11 +284,6 @@ def pickup(action):
     else:
         claw.run_angle(500, angle)
 
-#sorter funcs
-def turn(times):
-    angle = times * 270
-    sorter.run_angle(500, angle)
-
 def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
     if ((l_red + r_red) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
         print("Red Detected, stopping here.")
@@ -299,21 +295,25 @@ def object_detection():
         front_val = front_light_sensor.rgb()
         # check if anything there
         if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
-            #differentiate black/white
-
+            
+            randist = robot.distance()
             robot.drive(20, 0)
+            claw.run_angle(50, 100)
 
-            #slowly close claw, when closed stop robot and move back
-            #NOT WriTTEN
+            robot.straight(-abs(robot.distance() - randist))
 
             front_val = front_light_sensor.reflection() #recheck the ball
 
             if front_val < 20: #black
-                #store ball colour to list
-                #NOT WRITTEN
-                #pickup and reopen
+                stored.append("black")
                 pickup("close")
                 pickup("open")
+                sorter.run_angle(100, 120)
+            else: #white
+                stored.append("white")
+                pickup("close")
+                pickup("open")
+                sorter.run_angle(100, 120)
     else:
         front_val = front_light_sensor.rgb()
         # check if anything there
@@ -479,26 +479,27 @@ def wall_track(distance):
 
 # this function you test on its own first #make new one just wall track youll use at many places in evac
 
-scan_for_depo()
-while False: #checking object calibrated value
-    front_val = front_light_sensor.rgb()
-    if (front_val[0] + front_val[1] + front_val[2]) == 0:
-        pass
-    else:
-        print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
-
-while False:  # for calibration (rgb)
-    
-    print("Calibration values: ", left_light_sensor.rgb(), right_light_sensor.rgb())
-
-while False:  # for calibration (calculated)
-    values = calibrate_values()
-    print("Calibration values: ", values)
-
-while True:
-    pass
+def calibration(mode):
+    if mode == "rgb":
+        while True:
+            print("Calibration values: ", left_light_sensor.rgb(), right_light_sensor.rgb())
+    elif mode == "calculated":
+        while True:
+                print("Calibration values: ", calibrated_values())
+    elif mode == "objcali":
+        while True:
+            front_val = front_light_sensor.rgb()
+            if (front_val[0] + front_val[1] + front_val[2]) == 0:
+                pass
+            else:
+                print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
 
 #RUN
+#Reset claw and depo position
+
+claw.run_target(100, 10)
+sorter.run_target(100, 0)
+
 while True:
     if evac is False:  # if not in evacuation zone
         # line tracking
@@ -521,4 +522,3 @@ while True:
         red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue)
     else:  # if in evacuation zone
         evac_zone()
-
