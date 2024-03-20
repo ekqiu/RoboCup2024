@@ -76,7 +76,7 @@ right_blue_range = right_max_blue - right_min_blue
 # variables
 left_val = None
 right_val = None
-evac = False
+evac = True #testing
 last_black = 0
 stored = []
 
@@ -273,7 +273,6 @@ def silver_detection():
         ):
             print("Silver Detected, stopping here.")
             robot.stop()
-            evac_zone()
             evac = True
 
 #clawfuncs
@@ -306,14 +305,14 @@ def object_detection():
 
             if front_val < 20: #black
                 stored.append("black")
-                 pickup("close")
-                 pickup("open")
-                 sorter.run_angle(100, 120)
-             else: #white
-                 stored.append("white")
-                 pickup("close")
-                 pickup("open")
-                 sorter.run_angle(100, 120)
+                pickup("close")
+                pickup("open")
+                sorter.run_angle(100, 120)
+            else: #white
+                stored.append("white")
+                pickup("close")
+                pickup("open")
+                sorter.run_angle(100, 120)
     else:
         front_val = front_light_sensor.rgb()
         # check if anything there
@@ -333,20 +332,6 @@ def object_detection():
 
                 robot.drive(100, -10)
                 return
-        else:
-            front_val = front_light_sensor.rgb()
-            if ((front_val[2]) / (front_val[0] + front_val[1] + front_val[2])) < 0.7:
-                    print("Obstacle Detected, going around it.")
-                    robot.straight(-50)
-                    robot.turn(90)
-                    robot.straight(100)
-                    robot.turn(-90)
-                    #USE ULTRASONIC SENSOR TO TRACK AROUND
-                    robot.drive(80, 10)
-                    robot.turn(90)
-
-                    robot.drive(100, -10)
-                    return
 
 def scan_dist():
     initial_dist = robot.distance()
@@ -496,6 +481,36 @@ def scan_dist():
 
     if value[1] > value[0] and value[1] > value[2]:
         print("green")
+        robot.straight(-100)
+        robot.turn(180)
+        #select slots to depo balls not written
+        robot.stop()
+        right.dc(-100)
+        left.dc(-100)
+        wait(1500)
+        robot.stop()
+        
+        #after all balls depoed
+        robot.straight(75)
+        robot.turn(-45)
+    
+        #tile1 reading unlikely to be able to get
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+                # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 75 - tile1
+            robot.straight(error)
 
 
 def wall_track(distance):
@@ -554,9 +569,11 @@ def wall_track(distance):
 
 
 def evac_zone():
-    robot.straight(220) #move 20cm into evac
+    #robot.straight(220) #move 20cm into evac
     for i in range(4):
         scan_dist()
+
+
 def calibration(mode):
      if mode == "rgb":
          while True:
@@ -571,14 +588,12 @@ def calibration(mode):
                  pass
              else:
                  print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
-while True:
-    pass
+
 
 #RUN
- #Reset claw and depo position
 
- claw.run_target(100, 10)
- sorter.run_target(100, 0)
+#while True:
+#    pass
 while True:
     if evac is False:  # if not in evacuation zone
         # line tracking
