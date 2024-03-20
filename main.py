@@ -295,7 +295,7 @@ def object_detection():
         front_val = front_light_sensor.rgb()
         # check if anything there
         if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
-            
+
             randist = robot.distance()
             robot.drive(20, 0)
             claw.run_angle(50, 100)
@@ -306,14 +306,14 @@ def object_detection():
 
             if front_val < 20: #black
                 stored.append("black")
-                pickup("close")
-                pickup("open")
-                sorter.run_angle(100, 120)
-            else: #white
-                stored.append("white")
-                pickup("close")
-                pickup("open")
-                sorter.run_angle(100, 120)
+                 pickup("close")
+                 pickup("open")
+                 sorter.run_angle(100, 120)
+             else: #white
+                 stored.append("white")
+                 pickup("close")
+                 pickup("open")
+                 sorter.run_angle(100, 120)
     else:
         front_val = front_light_sensor.rgb()
         # check if anything there
@@ -403,27 +403,100 @@ def scan_dist():
             robot.stop()
 
         robot.turn(-90)
+    else:
+        robot.turn(-90)
     
     print(median)
-    wall_track(median - 300)
-    scan_for_depo()
+    wall_track(median - 350)
 
-def scan_for_depo():
+    #scan depo
     robot.turn(45)
-    robot.straight(110)
+    robot.straight(100)
     #one wheel turn
     robot.stop()
+    left.hold()
     current = robot.angle()
     while robot.angle() - current > -90:
         right.run(500)
         #object_detection()
-    robot.straight(50)
     # check if evac is there
     # use front colour sensor to check if the value is red (dead ball), green (alive ball) or black (nothing)
+    robot.stop()
+    robot.straight(30)
     value = front_light_sensor.rgb()
+    #red is 5,0,0
+    #green is 2, 6, 4
+    #none is 0 all
+    wait(100)
+    print(front_light_sensor.rgb())
+    if max(value) == 0: #none
+        print("none")
+        robot.straight(-30)
+        robot.stop()
+        #use for 2B when there is time
+        #left.hold()
+        #current = robot.angle()
+        #while robot.angle() - current > 90:
+        #    right.run(-500)
+        #robot.straight(-100)
+        #robot.turn(-45)
 
-def evac_zone():
-    robot.straight(200) #move 20cm into evac
+        robot.turn(135)
+
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+        # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 60 - tile1
+            robot.straight(error)
+
+    if value[0] > value[1] and value[0] > value[2]: #red
+        print("red")
+        robot.straight(-100)
+        robot.turn(180)
+        #select slots to depo balls not written
+        robot.stop()
+        right.dc(-100)
+        left.dc(-100)
+        wait(1500)
+        robot.stop()
+        
+        #after all balls depoed
+        robot.straight(75)
+        robot.turn(-45)
+    
+        #tile1 reading unlikely to be able to get
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+                # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 75 - tile1
+            robot.straight(error)
+
+
+    if value[1] > value[0] and value[1] > value[2]:
+        print("green")
+
 
 def wall_track(distance):
     robot.stop()
@@ -446,7 +519,7 @@ def wall_track(distance):
         print("current ", left_dist, "target", corrected_left_dist, "error", error, target_angle, "running angle", -angle_error * 10.0)
         #negative angle error should rutn right, so 
 
-        robot.drive(50, -angle_error * 12.0) #this affects how fast it turns back
+        robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
 
     robot.stop()
         #have to decide on sped first, then tune the multipliers
@@ -479,27 +552,33 @@ def wall_track(distance):
 
 # this function you test on its own first #make new one just wall track youll use at many places in evac
 
+
+def evac_zone():
+    robot.straight(220) #move 20cm into evac
+    for i in range(4):
+        scan_dist()
 def calibration(mode):
-    if mode == "rgb":
-        while True:
-            print("Calibration values: ", left_light_sensor.rgb(), right_light_sensor.rgb())
-    elif mode == "calculated":
-        while True:
-                print("Calibration values: ", calibrated_values())
-    elif mode == "objcali":
-        while True:
-            front_val = front_light_sensor.rgb()
-            if (front_val[0] + front_val[1] + front_val[2]) == 0:
-                pass
-            else:
-                print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
+     if mode == "rgb":
+         while True:
+             print("Calibration values: ", left_light_sensor.rgb(), right_light_sensor.rgb())
+     elif mode == "calculated":
+         while True:
+                 print("Calibration values: ", calibrated_values())
+     elif mode == "objcali":
+         while True:
+             front_val = front_light_sensor.rgb()
+             if (front_val[0] + front_val[1] + front_val[2]) == 0:
+                 pass
+             else:
+                 print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
+while True:
+    pass
 
 #RUN
-#Reset claw and depo position
+ #Reset claw and depo position
 
-claw.run_target(100, 10)
-sorter.run_target(100, 0)
-
+ claw.run_target(100, 10)
+ sorter.run_target(100, 0)
 while True:
     if evac is False:  # if not in evacuation zone
         # line tracking
