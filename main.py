@@ -19,39 +19,58 @@ import statistics
 # This program requires LEGO EV3 MicroPython v2.0 or higher.
 # Click "Open user guide" on the EV3 extension tab for more information.
 
-# Create your objects here.
+# Tagging guide:
+# !!/!: category/subcategory
+# @: for calibrations
+# $: for optimisations
+
+# !! OBJECTS !! #
+
+# brain
 ev3 = EV3Brick()
 
-## MOTORS
 
-#drive motors
+# ! MOTORS ! #
+
+# large driving motors (tank tracks)
 left = Motor(Port.C, positive_direction=Direction.COUNTERCLOCKWISE)
 right = Motor(Port.B, positive_direction=Direction.COUNTERCLOCKWISE)
 
+# medium motors
 claw = Motor(Port.A)
 sorter = Motor(Port.D)
 
-##robot
+# defining robot wheel motors
 robot = DriveBase(left, right, 33, 187)
+# @ variables: (left motor, right motor, diameter of the wheel (that is used to turn the tracks), distance between the wheels (from middle to middle of track)
 
-# adjust straight/turning speed and acl
+# adjust the straight/turning speed/acceleration (for functions like robot.straight() and robot.turn())
 #robot.settings(350, 150, 300, 200)
+# @ variables: (straight_speed, straight_acceleration, turn_rate, turn_acceleration)
 
-# Colour Sensors facing bricks.
+
+# ! SENSORS ! #
+
+# colour sensors facing balls/deposit zones/obstacles
 front_light_sensor = ColorSensor(Port.S1)
 
-# Colour Sensors facing floor.
+# colour sensors facing floor
 left_light_sensor = ColorSensor(Port.S4)
 right_light_sensor = ColorSensor(Port.S3)
 
-#ultrasonic
+#ultrasonic sensor
 ultrasonic_sensor = UltrasonicSensor(Port.S2)
+
+
+# !! VARIABLES !! #
+
+# ! CALIBRATIONS ! #
 
 left_min_red = 5
 left_max_red = 55
 
 left_min_green = 7
-left_max_green = 46 # g30, w64
+left_max_green = 46
 
 left_min_blue = 11
 left_max_blue = 100
@@ -60,7 +79,7 @@ right_min_red = 3
 right_max_red = 50
 
 right_min_green = 7
-right_max_green = 46 #g30, w63
+right_max_green = 46
 
 right_min_blue = 3
 right_max_blue = 90
@@ -73,20 +92,32 @@ right_red_range = right_max_red - right_min_red
 right_green_range = right_max_green - right_min_green
 right_blue_range = right_max_blue - right_min_blue
 
-# variables
+# @ how to calibrate
+# 1. Run the calibration function [calibration("rgb")]
+# 2. Place the robot on white surface and record the values as maximum.
+# 3. Place the robot on black surface and record the values as minimum.
+# 4. Remember to remove the calibration function after calibration.
+
+
+# ! OTHERS ! #
+
+#so it can be referenced in the functions
 left_val = None
 right_val = None
-evac = True #testing
+
+# default
+evac = False
 last_black = 0
 stored = []
 
-# Starting beep.
-ev3.speaker.beep()
 
-# Functions.
+# !! FUNCTIONS !! #
+
+# covert raw values into calibrated values based off the min and max values
 def calibrate_values():
-    # max min to make sure values do not go below 0 and above 1
     global left_val, right_val
+
+    # max min to make sure values do not go below 0 and above 1
     left_val = left_light_sensor.rgb()
 
     left_red_cal = max(min((left_val[0] - left_min_red) / left_red_range, 1), 0)
@@ -110,54 +141,54 @@ def calibrate_values():
         right_blue_cal,
     )
 
+# pure line track without green square detection
 def only_line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
         error = l_green - r_green
-        speed = (1 - abs(error)) * 80  # adjust speed
-        rotation = error * 225
+        speed = (1 - abs(error)) * 80  # @ adjust the speed
+        rotation = error * 225 # @ adjust degree of rotation
         robot.drive(speed, rotation)
 
+# link track with green square detection
 def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
     global last_black
-    #val = calibrate_values()
     if (
         max(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.4
-    ):  # Double black case .5 .6 white, .1 .2 green
-        print("Double black detected")
+    ):  # the calibrated value to trigger the double black detection
+        print("double black detected")
+
         robot.stop()
-        
-
-        robot.straight(-15)  # Move back to check for green squares
+        robot.straight(-15)  # @ Move back to check for green squares
         wait(100)
-        val = calibrate_values()
+
+        val = calibrate_values() # Get values of the space under the black line
         nl_green = val[1]
         nr_green = val[4]
         nl_red = val[0]
         nr_red = val[3]
+
+        # made for 135degree cases
+
         saw = ""
-        if nl_green <= 0.6: #left black
-            robot.turn(-18)
+        if nl_green <= 0.6: # @ left black trigger
+            robot.turn(-18) # @ amt to move to off set
             saw = "left"
-            #BLACK left
-
-
-
-        if nr_green <= 0.6: #right black
-            robot.turn(18)
+        if nr_green <= 0.6: # @ right black trigger
+            robot.turn(18) # @ amt to move to off set
             saw = "right"
-            #BLACK right
-        
-    
 
+        # recheck values if the robot had moved
         val = calibrate_values()
         nl_green = val[1]
         nr_green = val[4]
         nl_red = val[0]
         nr_red = val[3]
-        # Checking green
-        if nl_red <= 0.4:  # low red for left sensor
-            if nr_red <= 0.3:  # low red for right sensor
-                if nl_green <= 0.3:
-                    if nr_green <= 0.3:
+
+        # checking green
+        if nl_red <= 0.4:  # @ low red trigger for left sensor
+            if nr_red <= 0.3:  # @ low red trigger for right sensor
+                #green channel check for black
+                if nl_green <= 0.3: # @ low green trigger for left sensor
+                    if nr_green <= 0.3: # @ low green trigger for right sensor
                         print("BOTH black")
                     single_line_track(100, "left", "left", 20)
                 else:
@@ -168,7 +199,7 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                 print("LEFT green")
                 single_line_track(110, "left", "left", 20)
         else:
-            if nr_red <= 0.6:  # low red for right sensor
+            if nr_red <= 0.6:  # @ low red for right sensor
                 print("RIGHT green")  # If only right is green -> turn right
                 single_line_track(110, "right", "right", 20)
             else:  # If none is green
@@ -180,20 +211,21 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                     single_line_track(110, "right", "right", 20)
                 else:
                     while robot.distance() < 90: #calc new speed rotation
+                        # can replace w only line track?
                         newval = calibrate_values()
                         error = newval[1] - newval[4]
-                        speed = (1 - abs(error)) * 75  # adjust speed
-                        rotation = error * 100
+                        speed = (1 - abs(error)) * 75  # @ adjust speed
+                        rotation = error * 100 # @ adjust angle
                         robot.drive(speed, rotation)
     else:
         error = l_green - r_green
-        speed = (1 - abs(error)) * 100  # adjust speed
-        rotation = error * 120
-        if min(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.7:
+        speed = (1 - abs(error)) * 100  # @ adjust speed
+        rotation = error * 120 # @ adjust angle
+        if min(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.7: # @ black trigger
             last_black = robot.distance()
         gap = robot.distance() - last_black
         print(gap)
-        if gap > 50:
+        if gap > 50: # @ gap trigger
             ev3.speaker.beep()
             robot.stop()
             robot.reset()
@@ -236,7 +268,6 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                     break
 
         robot.drive(speed, rotation)
-#both black, 
 
 def single_line_track(distance, sensor, side, speed=100.0, gain=100.0):
     error = 0.0
@@ -590,10 +621,11 @@ def calibration(mode):
                  print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
 
 
-#RUN
+# !! MAIN LOOP !! #
 
-#while True:
-#    pass
+# starting beep
+ev3.speaker.beep()
+
 while True:
     if evac is False:  # if not in evacuation zone
         # line tracking
