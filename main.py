@@ -269,6 +269,7 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
 
         robot.drive(speed, rotation)
 
+# line track using on[ly]
 def single_line_track(distance, sensor, side, speed=100.0, gain=100.0):
     error = 0.0
     robot.stop()
@@ -568,36 +569,6 @@ def wall_track(distance):
         robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
 
     robot.stop()
-        #have to decide on sped first, then tune the multipliers
-        #make it drive
-    #nvm you print the values and test first
-#error is how far off it is from 7.5cm
-#so e.g. if the error is 0, then the robot should be heading traight forward
-# so we need to calculate what angle it is supposed to be facing
-# if its too close then we should be facing away from wall, too far face towards wall questions?    
-#so next step is to compare our current angle and the angle we should be facing
-# so if you just do error* 10, lets say the robot is currently against the wall, means error is -75
-#but ofc if we make the robot turn to 75 degrees its too much
-# so we add a multiplier
-# so we can do smth like target angle is error * 0.1 so itll tilt by 7.5 deg
-
-#this just calculates the target angle. then we need to figure the difference between current angle and the r
-#so another error to calc
-#then that error feeds to the drive
-    
-    #if the robot is tilted the measured dist from us sensor is longer than the actual dist the robot is to the wall
-
-    #if you know the angle of the robot, its just using cos
-    #its just cosine a is actual reading
-    #the angle is the robot angle
-    # but the angle need to convert to radians
-
-
-
-#i got no voice
-
-# this function you test on its own first #make new one just wall track youll use at many places in evac
-
 
 def evac_zone():
     #robot.straight(220) #move 20cm into evac
