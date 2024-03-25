@@ -38,7 +38,7 @@ right = Motor(Port.B, positive_direction=Direction.COUNTERCLOCKWISE)
 
 # medium motors
 claw = Motor(Port.A)
-sorter = Motor(Port.D)
+sorter = Motor(Port.D, positive_direction=Direction.CLOCKWISE, gears=[8, 24])
 
 # defining robot wheel motors
 robot = DriveBase(left, right, 33, 187)
@@ -108,7 +108,7 @@ right_val = None
 # default
 evac = False
 last_black = 0
-stored = []
+stored = [None, None, None]
 
 
 # !! FUNCTIONS !! #
@@ -309,9 +309,9 @@ def silver_detection():
 
 #clawfuncs
 def pickup(action):
-    angle = 780
+    angle = 700
     if action == "open":
-        claw.run_angle(500, -abs(angle))
+        claw.run_angle(500, -abs(angle + 300))
     else:
         claw.run_angle(500, angle)
 
@@ -321,57 +321,78 @@ def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
         robot.stop()
 
 def object_detection():
-    global  left_val, right_val, evac
-    if evac is True:
-        front_val = front_light_sensor.rgb()
-        # check if anything there
-        if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
+    global  left_val, right_val, evac, stored
 
-            randist = robot.distance()
-            robot.drive(20, 0)
-            claw.run_angle(50, 100)
+    front_val = sum(front_light_sensor.rgb())
+    # check if anything there
+    if front_val > 0:
 
-            robot.straight(-abs(robot.distance() - randist))
+            if stored[2] == None:
 
-            front_val = front_light_sensor.reflection() #recheck the ball
+                randist = robot.distance()
+                robot.drive(100, 0)
+                claw.run_angle(300, 300)
 
-            if front_val < 20: #black
-                stored.append("black")
-                pickup("close")
-                pickup("open")
-                sorter.run_angle(100, 120)
-            else: #white
-                stored.append("white")
-                pickup("close")
-                pickup("open")
-                sorter.run_angle(100, 120)
-    else:
-        front_val = front_light_sensor.rgb()
-        # check if anything there
-        if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
-            print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
-            if ((front_val[2]) / (front_val[0] + front_val[1] + front_val[2])) < 0.7:
-                print("Obstacle Detected, going around it.")
-                robot.straight(-50)
-                robot.turn(90)
-                robot.straight(100)
-                robot.turn(-90)
-                while left_val[2] >= (left_min_green + 10) and right_val[2] <= (
-                    right_min_green + 10
-                ):
-                    robot.drive(80, 10)
-                robot.turn(90)
+                while robot.distance() > randist:  
+                    robot.drive(-150, 0)
+                robot.stop()
 
-                robot.drive(100, -10)
-                return
+                front_val = sum(front_light_sensor.rgb()) #recheck the ball
+
+                if front_val < 10: #black 0
+                    if stored[0] == None:
+                        sorter.run_target(100, 0)
+                        stored[0] = "black"
+                    elif stored[1] == None:
+                        sorter.run_target(100, 120)
+                        stored[1] = "black"
+                    elif stored[2] == None:
+                        sorter.run_target(100, 240)
+                        stored[2] = "black"
+                    pickup("close")
+                    pickup("open")
+                else: #white 74
+                    if stored[0] == None:
+                        sorter.run_target(100, 0)
+                        stored[0] = "white"
+                    elif stored[1] == None:
+                        sorter.run_target(100, 120)
+                        stored[1] = "white"
+                    elif stored[2] == None:
+                        sorter.run_target(100, 240)
+                        stored[2] = "white"
+                    pickup("close")
+                    pickup("open")
+                print(stored)
+
+def Obstacle_detection():
+    front_val = front_light_sensor.rgb()
+    # check if anything there
+    if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
+        print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
+        if ((front_val[2]) / (front_val[0] + front_val[1] + front_val[2])) < 0.7:
+            print("Obstacle Detected, going around it.")
+            robot.straight(-50)
+            robot.turn(90)
+            robot.straight(100)
+            robot.turn(-90)
+            while left_val[2] >= (left_min_green + 10) and right_val[2] <= (
+                right_min_green + 10
+            ):
+                robot.drive(80, 10)
+            robot.turn(90)
+
+            robot.drive(100, -10)
+            return
 
 def scan_dist():
+    global stored
     initial_dist = robot.distance()
     dist_list = []
 
     while robot.distance() - initial_dist < 300: #step 0
         robot.drive(80, 0)
-        #object_detection()
+        object_detection()
         us = ultrasonic_sensor.distance()
         if us > 1050:
             pass
@@ -395,7 +416,7 @@ def scan_dist():
 
         while robot.distance() - initial_dist < 300:
             robot.drive(80, 0)
-            #object_detection()
+            object_detection()
             us = ultrasonic_sensor.distance()
             if us > 1050:
                 pass
@@ -424,7 +445,7 @@ def scan_dist():
         robot.turn(-90)
     
     print(median)
-    wall_track(median - 350)
+    wall_track(median - 360)
 
     #scan depo
     robot.turn(45)
@@ -435,7 +456,6 @@ def scan_dist():
     current = robot.angle()
     while robot.angle() - current > -90:
         right.run(500)
-        #object_detection()
     # check if evac is there
     # use front colour sensor to check if the value is red (dead ball), green (alive ball) or black (nothing)
     robot.stop()
@@ -481,15 +501,34 @@ def scan_dist():
         print("red")
         robot.straight(-100)
         robot.turn(180)
-        #select slots to depo balls not written
-        robot.stop()
-        right.dc(-100)
-        left.dc(-100)
-        wait(1500)
-        robot.stop()
+        
+        if stored[0] == "black":
+            sorter.run_target(100, 180)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[1] == "black":
+            sorter.run_target(100, 300)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[2] == "black":
+            sorter.run_target(100, 420)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
         
         #after all balls depoed
-        robot.straight(75)
+        
         robot.turn(-45)
     
         #tile1 reading unlikely to be able to get
@@ -511,19 +550,38 @@ def scan_dist():
             robot.straight(error)
 
 
-    if value[1] > value[0] and value[1] > value[2]:
+    if value[1] > value[0] and value[1] > value[2]: #green
         print("green")
         robot.straight(-100)
         robot.turn(180)
         #select slots to depo balls not written
-        robot.stop()
-        right.dc(-100)
-        left.dc(-100)
-        wait(1500)
-        robot.stop()
         
+        if stored[0] == "white":
+            sorter.run_target(100, 180)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[1] == "white":
+            sorter.run_target(100, 300)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[2] == "white":
+            sorter.run_target(100, 420)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+
         #after all balls depoed
-        robot.straight(75)
         robot.turn(-45)
     
         #tile1 reading unlikely to be able to get
@@ -563,15 +621,16 @@ def wall_track(distance):
 
         angle_error = robot.angle() - target_angle
 
-        print("current ", left_dist, "target", corrected_left_dist, "error", error, target_angle, "running angle", -angle_error * 10.0)
+        #print("current ", left_dist, "target", corrected_left_dist, "error", error, target_angle, "running angle", -angle_error * 10.0)
         #negative angle error should rutn right, so 
 
+        object_detection()
         robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
 
     robot.stop()
 
 def evac_zone():
-    #robot.straight(220) #move 20cm into evac
+    robot.straight(220) #move 20cm into evac
     for i in range(4):
         scan_dist()
 
@@ -589,13 +648,18 @@ def calibration(mode):
              if (front_val[0] + front_val[1] + front_val[2]) == 0:
                  pass
              else:
-                 print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
+                 print((front_val[0] + front_val[1] + front_val[2]))
 
 
 # !! MAIN LOOP !! #
 
 # starting beep
 ev3.speaker.beep()
+
+evac_zone()
+while True:
+    pass
+
 
 while True:
     if evac is False:  # if not in evacuation zone
