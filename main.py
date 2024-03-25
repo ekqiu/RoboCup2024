@@ -309,7 +309,7 @@ def silver_detection():
 
 #clawfuncs
 def pickup(action):
-    angle = 700
+    angle = 650
     if action == "open":
         claw.run_angle(500, -abs(angle + 300))
     else:
@@ -602,6 +602,224 @@ def scan_dist():
             error = 75 - tile1
             robot.straight(error)
 
+def exit_scan_dist():
+    # to be done: if gaps are found in corners (use phone ntoes ref) exit. if wall track gap is found exit. if wall track immediately left is found exit
+    global stored
+    initial_dist = robot.distance()
+    dist_list = []
+
+    while robot.distance() - initial_dist < 300: #step 0
+        robot.drive(80, 0)
+        object_detection()
+        us = ultrasonic_sensor.distance()
+        if us > 1050:
+            pass
+        else:
+            dist_list.append(us)
+
+    robot.stop()
+    dist_list.sort()
+    count = len(dist_list)
+    if count % 2 == 0:
+        median = (dist_list[count // 2] + dist_list[count // 2 - 1]) / 2
+    else:
+        median = dist_list[count // 2]
+    robot.straight(-300)
+    print(median)
+    foralignment = ultrasonic_sensor.distance()
+    if median < 150: #special case
+        robot.turn(90)
+        initial_dist = robot.distance()
+        dist_list = []
+
+        while robot.distance() - initial_dist < 300:
+            robot.drive(80, 0)
+            object_detection()
+            us = ultrasonic_sensor.distance()
+            if us > 1050:
+                pass
+            else:
+                dist_list.append(us)
+
+        robot.stop()
+        #find median manually 
+        dist_list.sort()
+        count = len(dist_list)
+        if count % 2 == 0:
+            median = (dist_list[count // 2] + dist_list[count // 2 - 1]) / 2
+        else:
+            median = dist_list[count // 2]
+        robot.straight(-300)
+        print(median)
+        ev3.screen.print(median)
+
+        if foralignment < 175:
+            robot.drive(-100, 0)
+            wait(1000)
+            robot.stop()
+
+        robot.turn(-90)
+    else:
+        robot.turn(-90)
+    
+    print(median)
+    wall_track(median - 360)
+
+    #scan depo
+    robot.turn(45)
+    robot.straight(100)
+    #one wheel turn
+    robot.stop()
+    left.hold()
+    current = robot.angle()
+    while robot.angle() - current > -90:
+        right.run(500)
+    # check if evac is there
+    # use front colour sensor to check if the value is red (dead ball), green (alive ball) or black (nothing)
+    robot.stop()
+    robot.straight(30)
+    value = front_light_sensor.rgb()
+    #red is 5,0,0
+    #green is 2, 6, 4
+    #none is 0 all
+    wait(100)
+    print(front_light_sensor.rgb())
+    if max(value) == 0: #none
+        print("none")
+        robot.straight(-30)
+        robot.stop()
+        #use for 2B when there is time
+        #left.hold()
+        #current = robot.angle()
+        #while robot.angle() - current > 90:
+        #    right.run(-500)
+        #robot.straight(-100)
+        #robot.turn(-45)
+
+        robot.turn(135)
+
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+        # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 60 - tile1
+            robot.straight(error)
+
+    if value[0] > value[1] and value[0] > value[2]: #red
+        print("red")
+        robot.straight(-100)
+        robot.turn(180)
+        
+        if stored[0] == "black":
+            sorter.run_target(100, 180)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[1] == "black":
+            sorter.run_target(100, 300)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[2] == "black":
+            sorter.run_target(100, 420)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        
+        #after all balls depoed
+        
+        robot.turn(-45)
+    
+        #tile1 reading unlikely to be able to get
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+                # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 75 - tile1
+            robot.straight(error)
+
+
+    if value[1] > value[0] and value[1] > value[2]: #green
+        print("green")
+        robot.straight(-100)
+        robot.turn(180)
+        #select slots to depo balls not written
+        
+        if stored[0] == "white":
+            sorter.run_target(100, 180)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[1] == "white":
+            sorter.run_target(100, 300)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+        if stored[2] == "white":
+            sorter.run_target(100, 420)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
+            robot.stop()
+            robot.straight(75)
+
+        #after all balls depoed
+        robot.turn(-45)
+    
+        #tile1 reading unlikely to be able to get
+        tile1 = ultrasonic_sensor.distance()
+        robot.straight(200)
+        tile2 = ultrasonic_sensor.distance()
+
+                # 2 cases: no wall and wall
+        if tile2 < 300:
+            robot.turn(90)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(1500)
+            robot.straight(35)
+        elif tile2 > 300:
+            robot.turn(90)
+            error = 75 - tile1
+            robot.straight(error)
+
 
 def wall_track(distance):
     robot.stop()
@@ -633,6 +851,8 @@ def evac_zone():
     robot.straight(220) #move 20cm into evac
     for i in range(4):
         scan_dist()
+    for i in range(4):
+        exit_scan_dist()
 
 
 def calibration(mode):
