@@ -320,6 +320,18 @@ def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
         print("Red Detected, stopping here.")
         robot.stop()
 
+def green_detection():
+    values = calibrate_values()
+    l_red = values[0]
+    l_green = values[1]
+    l_blue = values[2]
+    r_red = values[3]
+    r_green = values[4]
+    r_blue = values[5]
+    if ((l_green + r_green) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
+        print("Red Detected, stopping here.")
+        robot.stop()
+
 def object_detection():
     global  left_val, right_val, evac, stored
 
@@ -365,7 +377,7 @@ def object_detection():
                     pickup("open")
                 print(stored)
 
-def Obstacle_detection():
+def obstacle_detection():
     front_val = front_light_sensor.rgb()
     # check if anything there
     if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
@@ -663,7 +675,7 @@ def exit_scan_dist():
         robot.turn(-90)
     
     print(median)
-    wall_track(median - 360)
+    exit_wall_track(median - 360)
 
     #scan depo
     robot.turn(45)
@@ -696,12 +708,31 @@ def exit_scan_dist():
         #robot.straight(-100)
         #robot.turn(-45)
 
-        robot.turn(135)
+        robot.turn(45)
+
+        left_wall = ultrasonic_sensor.distance()
+        if left_wall > 150:
+            #exit
+            robot.turn(-45)
+            #drive til green
+            green_detection()
+
+        robot.turn(90)
 
         tile1 = ultrasonic_sensor.distance()
+        if tile1 > 150:
+            #exit
+            robot.turn(-45)
+            #drive til green
+            green_detection()
         robot.straight(200)
         tile2 = ultrasonic_sensor.distance()
-
+        if tile2 > 150:
+            #exit
+            robot.turn(-45)
+            #drive til green
+            green_detection()
+        
         # 2 cases: no wall and wall
         if tile2 < 300:
             robot.turn(90)
@@ -710,10 +741,6 @@ def exit_scan_dist():
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
-            robot.turn(90)
-            error = 60 - tile1
-            robot.straight(error)
 
     if value[0] > value[1] and value[0] > value[2]: #red
         print("red")
@@ -847,6 +874,35 @@ def wall_track(distance):
 
     robot.stop()
 
+def exit_wall_track(distance):
+    robot.stop()
+    robot.reset() #this assums the robot is straight when start, coz it uses this as the initial 0 angle
+    while robot.distance() < distance:
+        # check reading for dist to left wall
+        left_dist = ultrasonic_sensor.distance() #you either \use a or b, not both
+        corrected_left_dist = left_dist * abs(math.cos(robot.angle() * 3.14 / 180))
+        
+        if corrected_left_dist > 200:
+            robot.stop()
+            robot.turn(-90)
+            distance = 0
+            green_detection()
+        else:
+            error = corrected_left_dist - 85 #actual value is 75 #error is positive means robot too far, means should face negative angle
+            #if youre just checking logic, you can change the 75, 75 very close to wall, hard to see if working
+
+        target_angle = error * -0.23 # this affects the max angle the robot can tilt
+
+        angle_error = robot.angle() - target_angle
+
+        #print("current ", left_dist, "target", corrected_left_dist, "error", error, target_angle, "running angle", -angle_error * 10.0)
+        #negative angle error should rutn right, so 
+
+        object_detection()
+        robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
+
+    robot.stop()
+
 def evac_zone():
     robot.straight(220) #move 20cm into evac
     for i in range(4):
@@ -868,7 +924,7 @@ def calibration(mode):
              if (front_val[0] + front_val[1] + front_val[2]) == 0:
                  pass
              else:
-                 print((front_val[0] + front_val[1] + front_val[2]))
+                 print(sum(front_val))
 
 
 # !! MAIN LOOP !! #
@@ -893,8 +949,8 @@ while True:
         r_blue = values[5]
         line_track(l_red, l_green, l_blue, r_red, r_green, r_blue)
 
-        # responsible for detecting objects
-        object_detection()
+        # responsible for detecting obstacle
+        obstacle_detection()
 
         # detect silver
         silver_detection()
