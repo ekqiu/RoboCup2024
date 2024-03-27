@@ -320,20 +320,11 @@ def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
         print("Red Detected, stopping here.")
         robot.stop()
 
-def green_detection():
-    values = calibrate_values()
-    l_red = values[0]
-    l_green = values[1]
-    l_blue = values[2]
-    r_red = values[3]
-    r_green = values[4]
-    r_blue = values[5]
-    if ((l_green + r_green) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
-        print("Red Detected, stopping here.")
-        robot.stop()
+def black_detection():
+   pass 
 
 def object_detection():
-    global  left_val, right_val, evac, stored
+    global left_val, right_val, evac, stored
 
     front_val = sum(front_light_sensor.rgb())
     # check if anything there
@@ -708,15 +699,20 @@ def exit_scan_dist():
         #robot.straight(-100)
         #robot.turn(-45)
 
+        robot.straight(50)
         robot.turn(45)
 
         left_wall = ultrasonic_sensor.distance()
+        print(left_wall)
+        wait(10000)
         if left_wall > 150:
             #exit
-            robot.turn(-45)
+            robot.turn(-90)
             #drive til green
-            green_detection()
+            print("exiting")
+            black_detection()
 
+        #wall align
         robot.turn(90)
 
         tile1 = ultrasonic_sensor.distance()
@@ -724,14 +720,14 @@ def exit_scan_dist():
             #exit
             robot.turn(-45)
             #drive til green
-            green_detection()
+            black_detection()
         robot.straight(200)
         tile2 = ultrasonic_sensor.distance()
         if tile2 > 150:
             #exit
             robot.turn(-45)
             #drive til green
-            green_detection()
+            black_detection()
         
         # 2 cases: no wall and wall
         if tile2 < 300:
@@ -886,7 +882,7 @@ def exit_wall_track(distance):
             robot.stop()
             robot.turn(-90)
             distance = 0
-            green_detection()
+            black_detection()
         else:
             error = corrected_left_dist - 85 #actual value is 75 #error is positive means robot too far, means should face negative angle
             #if youre just checking logic, you can change the 75, 75 very close to wall, hard to see if working
@@ -907,8 +903,8 @@ def evac_zone():
     robot.straight(220) #move 20cm into evac
     for i in range(4):
         scan_dist()
-    for i in range(4):
-        exit_scan_dist()
+#    for i in range(4):
+#        exit_scan_dist()
 
 
 def calibration(mode):
@@ -932,7 +928,8 @@ def calibration(mode):
 # starting beep
 ev3.speaker.beep()
 
-evac_zone()
+for i in range(4):
+    exit_scan_dist()
 while True:
     pass
 
