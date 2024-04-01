@@ -106,6 +106,8 @@ left_val = None
 right_val = None
 
 # default
+quit = False
+exited = False
 evac = False
 last_black = 0
 stored = [None, None, None]
@@ -303,13 +305,27 @@ def silver_detection():
             and right_val[2]
             >= (right_max_blue)  # blue maxs are 100, so no need to add more
         ):
-            print("Silver Detected, stopping here.")
-            robot.stop()
-            evac = True
+        #prevent seesaw detected
+            wait(1000)
+            left_val = left_light_sensor.rgb()
+            right_val = right_light_sensor.rgb()
+
+            if (
+                left_val[0] >= (left_max_red + more)
+                and right_val[0] >= (right_max_red + more)
+                and left_val[1] >= (left_max_green + more)
+                and right_val[1] >= (right_max_green + more)
+                and left_val[2] >= (left_max_blue)
+                and right_val[2]
+                >= (right_max_blue)  # blue maxs are 100, so no need to add more
+            ):
+                print("Silver Detected, stopping here.")
+                robot.stop()
+                evac = True
 
 #clawfuncs
 def pickup(action):
-    angle = 650
+    angle = 600
     if action == "open":
         claw.run_angle(500, -abs(angle + 300))
     else:
@@ -319,9 +335,6 @@ def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
     if ((l_red + r_red) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
         print("Red Detected, stopping here.")
         robot.stop()
-
-def black_detection():
-   pass 
 
 def object_detection():
     global left_val, right_val, evac, stored
@@ -389,12 +402,12 @@ def obstacle_detection():
             return
 
 def scan_dist():
-    global stored
+    global stored, quit
     initial_dist = robot.distance()
     dist_list = []
 
     while robot.distance() - initial_dist < 300: #step 0
-        robot.drive(80, 0)
+        robot.drive(150, 0)
         object_detection()
         us = ultrasonic_sensor.distance()
         if us > 1050:
@@ -418,7 +431,7 @@ def scan_dist():
         dist_list = []
 
         while robot.distance() - initial_dist < 300:
-            robot.drive(80, 0)
+            robot.drive(150, 0)
             object_detection()
             us = ultrasonic_sensor.distance()
             if us > 1050:
@@ -439,8 +452,10 @@ def scan_dist():
         ev3.screen.print(median)
 
         if foralignment < 175:
-            robot.drive(-100, 0)
-            wait(1000)
+            robot.stop()
+            right.dc(-100)
+            left.dc(-100)
+            wait(2000)
             robot.stop()
 
         robot.turn(-90)
@@ -448,7 +463,10 @@ def scan_dist():
         robot.turn(-90)
     
     print(median)
-    wall_track(median - 360)
+
+    wall_track(median - 380)
+    if quit:
+        return None
 
     #scan depo
     robot.turn(45)
@@ -484,18 +502,18 @@ def scan_dist():
         robot.turn(135)
 
         tile1 = ultrasonic_sensor.distance()
-        robot.straight(200)
+        robot.straight(250)
         tile2 = ultrasonic_sensor.distance()
 
         # 2 cases: no wall and wall
-        if tile2 < 300:
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
+        elif tile2 > 450:
             robot.turn(90)
             error = 60 - tile1
             robot.straight(error)
@@ -506,27 +524,30 @@ def scan_dist():
         robot.turn(180)
         
         if stored[0] == "black":
+            stored[0] = ""
             sorter.run_target(100, 180)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
         if stored[1] == "black":
+            stored[1] = ""
             sorter.run_target(100, 300)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
         if stored[2] == "black":
+            stored[2] = ""
             sorter.run_target(100, 420)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
         
@@ -540,14 +561,14 @@ def scan_dist():
         tile2 = ultrasonic_sensor.distance()
 
                 # 2 cases: no wall and wall
-        if tile2 < 300:
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
+        elif tile2 > 450:
             robot.turn(90)
             error = 75 - tile1
             robot.straight(error)
@@ -560,27 +581,30 @@ def scan_dist():
         #select slots to depo balls not written
         
         if stored[0] == "white":
+            stored[0] = ""
             sorter.run_target(100, 180)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
         if stored[1] == "white":
+            stored[1] = ""
             sorter.run_target(100, 300)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
         if stored[2] == "white":
+            stored[2] = ""
             sorter.run_target(100, 420)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
-            wait(2000)
+            wait(1000)
             robot.stop()
             robot.straight(75)
 
@@ -592,27 +616,27 @@ def scan_dist():
         robot.straight(200)
         tile2 = ultrasonic_sensor.distance()
 
-                # 2 cases: no wall and wall
-        if tile2 < 300:
+            # 2 cases: no wall and wall
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
+        elif tile2 > 450:
             robot.turn(90)
             error = 75 - tile1
             robot.straight(error)
 
 def exit_scan_dist():
     # to be done: if gaps are found in corners (use phone ntoes ref) exit. if wall track gap is found exit. if wall track immediately left is found exit
-    global stored
+    global stored, exited
     initial_dist = robot.distance()
     dist_list = []
 
     while robot.distance() - initial_dist < 300: #step 0
-        robot.drive(80, 0)
+        robot.drive(150, 0)
         object_detection()
         us = ultrasonic_sensor.distance()
         if us > 1050:
@@ -636,7 +660,7 @@ def exit_scan_dist():
         dist_list = []
 
         while robot.distance() - initial_dist < 300:
-            robot.drive(80, 0)
+            robot.drive(150, 0)
             object_detection()
             us = ultrasonic_sensor.distance()
             if us > 1050:
@@ -667,6 +691,8 @@ def exit_scan_dist():
     
     print(median)
     exit_wall_track(median - 360)
+    if quit:
+        return None
 
     #scan depo
     robot.turn(45)
@@ -704,13 +730,13 @@ def exit_scan_dist():
 
         left_wall = ultrasonic_sensor.distance()
         print(left_wall)
-        wait(10000)
         if left_wall > 150:
             #exit
             robot.turn(-90)
             #drive til green
             print("exiting")
-            black_detection()
+            robot.straight(100)
+            return None
 
         #wall align
         robot.turn(90)
@@ -718,19 +744,19 @@ def exit_scan_dist():
         tile1 = ultrasonic_sensor.distance()
         if tile1 > 150:
             #exit
-            robot.turn(-45)
-            #drive til green
-            black_detection()
+            robot.turn(-90)
+            robot.straight(100)
+            return None
         robot.straight(200)
         tile2 = ultrasonic_sensor.distance()
         if tile2 > 150:
             #exit
-            robot.turn(-45)
-            #drive til green
-            black_detection()
+            robot.turn(-90)
+            robot.straight(100)
+            return None
         
         # 2 cases: no wall and wall
-        if tile2 < 300:
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
@@ -776,19 +802,20 @@ def exit_scan_dist():
         tile1 = ultrasonic_sensor.distance()
         robot.straight(200)
         tile2 = ultrasonic_sensor.distance()
-
+        print(tile2)
                 # 2 cases: no wall and wall
-        if tile2 < 300:
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
-            robot.turn(90)
-            error = 75 - tile1
-            robot.straight(error)
+        if tile2 > 450:
+            #exit
+            robot.turn(-90)
+            robot.straight(100)
+            return None
 
 
     if value[1] > value[0] and value[1] > value[2]: #green
@@ -831,20 +858,22 @@ def exit_scan_dist():
         tile2 = ultrasonic_sensor.distance()
 
                 # 2 cases: no wall and wall
-        if tile2 < 300:
+        if tile2 < 450:
             robot.turn(90)
             robot.stop()
             right.dc(-100)
             left.dc(-100)
             wait(1500)
             robot.straight(35)
-        elif tile2 > 300:
-            robot.turn(90)
-            error = 75 - tile1
-            robot.straight(error)
+        if tile2 > 450:
+            #exit
+            robot.turn(-90)
+            robot.straight(100)
+            return None
 
 
 def wall_track(distance):
+    global quit, evac
     robot.stop()
     robot.reset() #this assums the robot is straight when start, coz it uses this as the initial 0 angle
     while robot.distance() < distance:
@@ -868,21 +897,33 @@ def wall_track(distance):
         object_detection()
         robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
 
+        if len(ev3.buttons.pressed()) > 0:
+            quit = True
+            evac = False
+            while len(ev3.buttons.pressed()) > 0:
+                robot.stop()
+            break
+        
+
     robot.stop()
 
 def exit_wall_track(distance):
     robot.stop()
     robot.reset() #this assums the robot is straight when start, coz it uses this as the initial 0 angle
+
     while robot.distance() < distance:
         # check reading for dist to left wall
         left_dist = ultrasonic_sensor.distance() #you either \use a or b, not both
         corrected_left_dist = left_dist * abs(math.cos(robot.angle() * 3.14 / 180))
-        
+
         if corrected_left_dist > 200:
+            robot.straight(100)
             robot.stop()
             robot.turn(-90)
             distance = 0
-            black_detection()
+            robot.straight(100)
+            return None
+            
         else:
             error = corrected_left_dist - 85 #actual value is 75 #error is positive means robot too far, means should face negative angle
             #if youre just checking logic, you can change the 75, 75 very close to wall, hard to see if working
@@ -897,14 +938,30 @@ def exit_wall_track(distance):
         object_detection()
         robot.drive(125, -angle_error * 12.0) #this affects how fast it turns back
 
+        if len(ev3.buttons.pressed()) > 0:
+            quit = True
+            while len(ev3.buttons.pressed()) > 0:
+                robot.stop()
+            break
+
     robot.stop()
 
 def evac_zone():
+    global evac, exited, quit
     robot.straight(220) #move 20cm into evac
     for i in range(4):
         scan_dist()
-#    for i in range(4):
-#        exit_scan_dist()
+        if quit:
+            return None
+    
+    for i in range(4):
+        exit_scan_dist()
+        if quit:
+            return None
+    
+        if exited is True:
+            break
+            evac = False
 
 
 def calibration(mode):
@@ -928,31 +985,47 @@ def calibration(mode):
 # starting beep
 ev3.speaker.beep()
 
-for i in range(4):
-    exit_scan_dist()
-while True:
-    pass
-
+evac = True
 
 while True:
-    if evac is False:  # if not in evacuation zone
-        # line tracking
-        values = calibrate_values()
-        l_red = values[0]
-        l_green = values[1]
-        l_blue = values[2]
-        r_red = values[3]
-        r_green = values[4]
-        r_blue = values[5]
-        line_track(l_red, l_green, l_blue, r_red, r_green, r_blue)
+    ev3.screen.print("press to start")
+    robot.stop()
+    robot.reset()
+    while len(ev3.buttons.pressed()) == 0:
+        pass
+    while len(ev3.buttons.pressed()) > 0:
+        pass
+    quit = False
+    while True:
+        if evac is False:  # if not in evacuation zone
+            # line tracking
+            values = calibrate_values()
+            l_red = values[0]
+            l_green = values[1]
+            l_blue = values[2]
+            r_red = values[3]
+            r_green = values[4]
+            r_blue = values[5]
+            line_track(l_red, l_green, l_blue, r_red, r_green, r_blue)
 
-        # responsible for detecting obstacle
-        obstacle_detection()
+            # responsible for detecting obstacle
+            obstacle_detection()
 
-        # detect silver
-        silver_detection()
+            # detect silver
+            silver_detection()
 
-        # detect red
-        red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue)
-    else:  # if in evacuation zone
-        evac_zone()
+            # detect red
+            red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue)
+
+            if len(ev3.buttons.pressed()) > 0:
+                quit = True
+                while len(ev3.buttons.pressed()) > 0:
+                    robot.stop()
+                
+            if quit:
+                break
+
+        else:  # if in evacuation zone
+            evac_zone()
+            if quit:
+                break
