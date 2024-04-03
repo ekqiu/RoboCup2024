@@ -145,6 +145,7 @@ def calibrate_values():
 
 # pure line track without green square detection
 def only_line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
+        print("only line track")
         error = l_green - r_green
         speed = (1 - abs(error)) * 80  # @ adjust the speed
         rotation = error * 225 # @ adjust degree of rotation
@@ -154,12 +155,12 @@ def only_line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
 def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
     global last_black
     if (
-        max(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.4
+        max(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.45
     ):  # the calibrated value to trigger the double black detection
         print("double black detected")
 
         robot.stop()
-        robot.straight(-15)  # @ Move back to check for green squares
+        robot.straight(-17)  # @ Move back to check for green squares
         wait(100)
 
         val = calibrate_values() # Get values of the space under the black line
@@ -221,14 +222,15 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                         robot.drive(speed, rotation)
     else:
         error = l_green - r_green
-        speed = (1 - abs(error)) * 100  # @ adjust speed
-        rotation = error * 120 # @ adjust angle
+        speed = (0.8 - abs(error)) * 120  # @ adjust speed
+        rotation = error * 250 # @ adjust angle
         if min(l_red, l_green, l_blue, r_red, r_green, r_blue) < 0.7: # @ black trigger
             last_black = robot.distance()
         gap = robot.distance() - last_black
-        print(gap)
-        if gap > 50: # @ gap trigger
-            ev3.speaker.beep()
+        if gap > 100: # @ gap trigger
+            #ev3.speaker.beep()
+            print("gap")
+            robot.straight(-50)
             robot.stop()
             robot.reset()
             while True:
@@ -241,7 +243,7 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                 r_blue = values[5]
                 if min(l_red, l_green, l_blue, r_red, r_green, r_blue) > 0.5:
                     if robot.angle() > -45:
-                        ev3.speaker.beep()
+                        #ev3.speaker.beep()
                         robot.drive(5, -20)
                     else:
                         break
@@ -257,7 +259,7 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
                 r_blue = values[5]
                 if min(l_red, l_green, l_blue, r_red, r_green, r_blue) > 0.5:
                     if robot.angle() < 45:
-                        ev3.speaker.beep()
+                        #ev3.speaker.beep()
                         robot.drive(5, 20)
                     else:
                         break
@@ -271,8 +273,9 @@ def line_track(l_red, l_green, l_blue, r_red, r_green, r_blue):
 
         robot.drive(speed, rotation)
 
-# line track using on[ly]
+# line track using only
 def single_line_track(distance, sensor, side, speed=100.0, gain=100.0):
+    print("single_line_track")
     error = 0.0
     robot.stop()
     robot.reset()
@@ -293,7 +296,7 @@ def single_line_track(distance, sensor, side, speed=100.0, gain=100.0):
         robot.drive((1 - abs(error)) * 25, error * gain)
 
 def silver_detection():
-    more = 1
+    more = 3
     global left_val, right_val, evac
     if evac is False:
         if (
@@ -306,6 +309,7 @@ def silver_detection():
             >= (right_max_blue)  # blue maxs are 100, so no need to add more
         ):
         #prevent seesaw detected
+            robot.stop()
             wait(1000)
             left_val = left_light_sensor.rgb()
             right_val = right_light_sensor.rgb()
@@ -325,16 +329,17 @@ def silver_detection():
 
 #clawfuncs
 def pickup(action):
-    angle = 600
+    angle = 500
     if action == "open":
-        claw.run_angle(500, -abs(angle + 300))
+        claw.run_angle(500, -abs(angle + 200))
     else:
         claw.run_angle(500, angle)
 
 def red_line_detection(l_red, l_green, l_blue, r_red, r_green, r_blue):
-    if ((l_red + r_red) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
-        print("Red Detected, stopping here.")
-        robot.stop()
+    if max(l_red, l_green, l_blue, r_red, r_green, r_blue) > 0:
+        if ((l_red + r_red) / (l_red + l_green + l_blue + r_red + r_green + r_blue)) >= 0.5:
+            print("Red Detected, stopping here.")
+            robot.stop()
 
 def object_detection():
     global left_val, right_val, evac, stored
@@ -347,7 +352,7 @@ def object_detection():
 
                 randist = robot.distance()
                 robot.drive(100, 0)
-                claw.run_angle(300, 300)
+                claw.run_angle(200, 300)
 
                 while robot.distance() > randist:  
                     robot.drive(-150, 0)
@@ -386,19 +391,20 @@ def obstacle_detection():
     # check if anything there
     if front_val[0] != 0 and front_val[1] != 0 and front_val[2] != 0:
         print((front_val[2]) / (front_val[0] + front_val[1] + front_val[2]))
-        if ((front_val[2]) / (front_val[0] + front_val[1] + front_val[2])) < 0.7:
+        if ((front_val[2]) / (front_val[0] + front_val[1] + front_val[2])) < 0.5:
             print("Obstacle Detected, going around it.")
-            robot.straight(-50)
+            robot.straight(-75)
             robot.turn(90)
-            robot.straight(100)
+            robot.straight(150)
             robot.turn(-90)
-            while left_val[2] >= (left_min_green + 10) and right_val[2] <= (
-                right_min_green + 10
-            ):
-                robot.drive(80, 10)
+            robot.straight(300)
+            robot.turn(-90)
+            robot.straight(150)
             robot.turn(90)
 
             robot.drive(100, -10)
+            print("line found")
+            robot.reset()
             return
 
 def scan_dist():
@@ -417,6 +423,7 @@ def scan_dist():
 
     robot.stop()
     dist_list.sort()
+    print(dist_list)
     count = len(dist_list)
     if count % 2 == 0:
         median = (dist_list[count // 2] + dist_list[count // 2 - 1]) / 2
@@ -981,6 +988,29 @@ def calibration(mode):
 
 
 # !! MAIN LOOP !! #
+
+initial_dist = robot.distance()
+dist_list = []
+
+while robot.distance() - initial_dist < 300: #step 0
+    robot.drive(150, 0)
+    object_detection()
+    us = ultrasonic_sensor.distance()
+    if us > 1050:
+        pass
+    else:
+        dist_list.append(us)
+
+robot.stop()
+dist_list.sort()
+print(dist_list)
+count = len(dist_list)
+if count % 2 == 0:
+    median = (dist_list[count // 2] + dist_list[count // 2 - 1]) / 2
+else:
+    median = dist_list[count // 2]
+robot.straight(-300)
+print(median)
 
 # starting beep
 ev3.speaker.beep()
